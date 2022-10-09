@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Ardalis.GuardClauses;
 using Microsoft.eShopWeb.ApplicationCore.Entities;
@@ -11,22 +12,28 @@ namespace Microsoft.eShopWeb.ApplicationCore.Services;
 
 public class OrderService : IOrderService
 {
+    const string FetchOrdersReportFunctionTrigger = "https://orderitemsreserver20221003173848.azurewebsites.net/api/FetchOrdersReport?code=hQQtaPNC9T_5ao672xcEcctU-aoZNKuGuSSkXwfwdiFgAzFuNfcqvw==";
+
     private readonly IRepository<Order> _orderRepository;
+    private readonly IReadRepository<Order> _orderReadRepository;
     private readonly IUriComposer _uriComposer;
     private readonly IRepository<Basket> _basketRepository;
     private readonly IRepository<CatalogItem> _itemRepository;
+    private static readonly HttpClient client = new HttpClient();
 
     public OrderService(IRepository<Basket> basketRepository,
         IRepository<CatalogItem> itemRepository,
         IRepository<Order> orderRepository,
-        IUriComposer uriComposer)
+        IUriComposer uriComposer,
+        IReadRepository<Order> orderReadRepository)
     {
         _orderRepository = orderRepository;
         _uriComposer = uriComposer;
         _basketRepository = basketRepository;
         _itemRepository = itemRepository;
+        _orderReadRepository = orderReadRepository;
     }
-
+    Order order = null;
     public async Task CreateOrderAsync(int basketId, Address shippingAddress)
     {
         var basketSpec = new BasketWithItemsSpecification(basketId);
@@ -46,8 +53,19 @@ public class OrderService : IOrderService
             return orderItem;
         }).ToList();
 
-        var order = new Order(basket.BuyerId, shippingAddress, items);
+        order = new Order(basket.BuyerId, shippingAddress, items);
 
         await _orderRepository.AddAsync(order);
+        SaveOrderInBlobStorage();
+    }
+
+    public void SaveOrderInBlobStorage()
+    {
+        client.GetAsync(FetchOrdersReportFunctionTrigger);
+    }
+
+    public Task<Order> GetCreatedOrder()
+    {
+        return Task.FromResult(order);
     }
 }
