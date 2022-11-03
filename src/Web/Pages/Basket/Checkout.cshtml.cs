@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.eShopWeb.ApplicationCore.Entities.OrderAggregate;
 using Microsoft.eShopWeb.ApplicationCore.Exceptions;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
+using Microsoft.eShopWeb.ApplicationCore.Specifications;
 using Microsoft.eShopWeb.Infrastructure.Identity;
+using Microsoft.eShopWeb.Infrastructure.Messaging;
+using Microsoft.eShopWeb.Infrastructure.Messaging.Messages;
 using Microsoft.eShopWeb.Web.Interfaces;
 
 namespace Microsoft.eShopWeb.Web.Pages.Basket;
@@ -19,18 +22,24 @@ public class CheckoutModel : PageModel
     private string? _username = null;
     private readonly IBasketViewModelService _basketViewModelService;
     private readonly IAppLogger<CheckoutModel> _logger;
+    private readonly IPublisher<OrderReport> _publisher;
+    private readonly IRepository<ApplicationCore.Entities.BasketAggregate.Basket> _basketRepository;
 
     public CheckoutModel(IBasketService basketService,
         IBasketViewModelService basketViewModelService,
         SignInManager<ApplicationUser> signInManager,
         IOrderService orderService,
-        IAppLogger<CheckoutModel> logger)
+        IAppLogger<CheckoutModel> logger,
+        IPublisher<OrderReport> publisher,
+        IRepository<ApplicationCore.Entities.BasketAggregate.Basket> basketRepository)
     {
         _basketService = basketService;
         _signInManager = signInManager;
         _orderService = orderService;
         _basketViewModelService = basketViewModelService;
         _logger = logger;
+        _publisher = publisher;
+        _basketRepository = basketRepository;
     }
 
     public BasketViewModel BasketModel { get; set; } = new BasketViewModel();
@@ -53,7 +62,18 @@ public class CheckoutModel : PageModel
 
             var updateModel = items.ToDictionary(b => b.Id.ToString(), b => b.Quantity);
             await _basketService.SetQuantities(BasketModel.Id, updateModel);
-            await _orderService.CreateOrderAsync(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
+
+            var basketSpec = new BasketWithItemsSpecification(BasketModel.Id);
+            var basket = await _basketRepository.GetBySpecAsync(basketSpec);
+            var address = new Address("123 Main St.", "Kent", "OH", "United States", "44240");
+            await _orderService.CreateOrderAsync(BasketModel.Id, address);
+            await _publisher.PublishAsync(new OrderReport
+            {
+                BuyerId = basket.BuyerId,
+                ReportName = "OrderReport",
+                ShippingAddress = address,
+                Items = basket.Items.ToList(),
+            });
             await _basketService.DeleteBasketAsync(BasketModel.Id);
         }
         catch (EmptyBasketOnCheckoutException emptyBasketOnCheckoutException)

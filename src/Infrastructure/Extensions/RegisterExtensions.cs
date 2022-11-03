@@ -3,6 +3,9 @@ using Infrastructure.BlobStorage.Configuration;
 using Infrastructure.BlobStorage.Options;
 using Infrastructure.BlobStorage.Services;
 using Infrastructure.BlobStorage.Services.Azure;
+using Microsoft.eShopWeb.Infrastructure.CosmosDb;
+using Microsoft.eShopWeb.Infrastructure.CosmosDb.Azure;
+using Microsoft.eShopWeb.Infrastructure.CosmosDb.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +27,16 @@ public static class RegisterExtensions {
             .Configure<AzureBlobContainerOptions>(opts => {
                 configurationSection.Bind(opts);
                 BindEncoding(opts);
+            });
+    }
+
+    public static IServiceCollection AddCosmosServices(this IServiceCollection serviceCollection, IConfigurationSection configurationSection)
+    {
+        return serviceCollection.AddSingleton<ICosmosService, CosmosService>()
+            .AddSingleton<ICosmosClient, AzureCosmosClient>()
+            .Configure<AzureCosmosClientOptions>(opts =>
+            {
+                configurationSection.Bind(opts);
             });
     }
 }

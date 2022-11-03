@@ -12,7 +12,7 @@ namespace Microsoft.eShopWeb.ApplicationCore.Services;
 
 public class OrderService : IOrderService
 {
-    const string FetchOrdersReportFunctionTrigger = "https://orderitemsreserver20221003173848.azurewebsites.net/api/FetchOrdersReport?code=hQQtaPNC9T_5ao672xcEcctU-aoZNKuGuSSkXwfwdiFgAzFuNfcqvw==";
+    const string FetchOrdersReportFunctionTrigger = "http://localhost:7181/api/FetchOrdersReport";
 
     private readonly IRepository<Order> _orderRepository;
     private readonly IReadRepository<Order> _orderReadRepository;

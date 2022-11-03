@@ -1,5 +1,6 @@
 ﻿using System.Net.Mime;
 using Ardalis.ListStartupServices;
+using Azure.Messaging.ServiceBus;
 using BlazorAdmin;
 using BlazorAdmin.Services;
 using Blazored.LocalStorage;
@@ -10,8 +11,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.eShopWeb;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
+using Microsoft.eShopWeb.Infrastructure;
 using Microsoft.eShopWeb.Infrastructure.Data;
 using Microsoft.eShopWeb.Infrastructure.Identity;
+using Microsoft.eShopWeb.Infrastructure.Messaging;
+using Microsoft.eShopWeb.Infrastructure.Messaging.Messages;
 using Microsoft.eShopWeb.Web;
 using Microsoft.eShopWeb.Web.Configuration;
 using Microsoft.eShopWeb.Web.HealthChecks;
@@ -21,7 +25,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.AddConsole();
 
-Microsoft.eShopWeb.Infrastructure.Dependencies.ConfigureServices(builder.Configuration, builder.Services);
+Dependencies.ConfigureServices(builder.Configuration, builder.Services);
 
 builder.Services.AddCookieSettings();
 
@@ -93,6 +97,16 @@ builder.Services.AddScoped<HttpService>();
 builder.Services.AddBlazorServices();
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+//Azure Service-bus services
+var section = builder.Configuration.GetSection("ServiceBusConfiguration");
+builder.Services.AddSingleton<IPublisher<OrderReport>>(_ =>
+{
+    var client = new ServiceBusClient(section["ConnectionStringToOrderReportQueue"]);
+    var sender = client.CreateSender(section["OrderReportQueue"]);
+
+    return new ServiceBusPublisher<OrderReport>(sender);
+});
 
 var app = builder.Build();
 
