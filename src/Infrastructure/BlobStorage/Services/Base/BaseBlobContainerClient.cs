@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Infrastructure.Helpers;
 
@@ -20,7 +21,16 @@ public abstract class BaseBlobContainerClient<T>: IBlobContainerClient {
     protected abstract Task<IBlobClient> CreateClient(T container, string fileName, CancellationToken cancellationToken);
 
     public async Task<IBlobClient> GetBlobClient(string fileName, CancellationToken cancellationToken) {
-        var client = await _blobContainerClient.GetValue(cancellationToken);
-        return await CreateClient(client, fileName, cancellationToken);
+        try
+        {
+            var client = await _blobContainerClient.GetValue(cancellationToken);
+            return await CreateClient(client, fileName, cancellationToken);
+        }
+        catch (Exception)
+        {
+            var client = await _blobContainerClient.GetValue(cancellationToken);
+            return await CreateClient(client, fileName, cancellationToken);
+        }
+        
     }
 }
